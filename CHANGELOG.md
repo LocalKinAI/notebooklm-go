@@ -10,6 +10,47 @@ Google ships frontend changes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-16
+
+### Changed (BREAKING — CLI install URL)
+
+- **CLI binary renamed `notebooklm` → `notebooklm-go`** to coexist with
+  the npm package [`notebooklm`](https://www.npmjs.com/package/notebooklm)
+  (Node.js CLI) and [`notebooklm-py`](https://github.com/teng-lin/notebooklm-py)
+  (Python CLI). All three projects had claimed the same binary name,
+  causing silent `$PATH` shadowing depending on `~/.nvm` / `~/.pyenv` /
+  `~/go/bin` ordering. Suffixing `-go` lets all three live on the same
+  machine cleanly.
+- **Install URL changed**: was `go install ...notebooklm-go/cmd/notebooklm@v0.1.x`,
+  now `go install ...notebooklm-go/cmd/notebooklm-go@v0.2.0`.
+- All CLI examples in the README, CHANGELOG, and `examples/*/main.go`
+  doc comments updated to invoke `notebooklm-go ...` instead of
+  `notebooklm ...`.
+
+### Not changed
+
+- The Go *library* import path is **unchanged**:
+  `import notebooklm "github.com/LocalKinAI/notebooklm-go"`. Only the
+  CLI binary name changed. Library users see no diff.
+- All `Client` methods, the EXPERIMENTAL surface from v0.1.1, the
+  RPC method IDs in `rpc.go` — all untouched.
+
+### Migration
+
+If you ran `go install .../cmd/notebooklm@v0.1.x`:
+
+```bash
+# (optional) remove the old binary
+rm $(go env GOPATH)/bin/notebooklm
+
+# install the new one
+go install github.com/LocalKinAI/notebooklm-go/cmd/notebooklm-go@v0.2.0
+
+# old: notebooklm list
+# new:
+notebooklm-go list
+```
+
 ## [0.1.1] - 2026-05-16
 
 ### Added
@@ -31,8 +72,9 @@ Google ships frontend changes.
   - Settings: `GetUserSettings`
 - **20 new CLI subcommands** wiring the new typed methods + the 4
   stable lib methods that v0.1.0 missed (`info`, `source-guide`,
-  `share-status`, `gen data-table`). `notebooklm help` shows the
-  full surface with 🧪 markers.
+  `share-status`, `gen data-table`). `notebooklm-go help` shows the
+  full surface with 🧪 markers. (At v0.1.1 the binary was still named
+  `notebooklm`; renamed to `notebooklm-go` in v0.2.0.)
 - `client_extra.go` to keep the EXPERIMENTAL additions visually
   separated from the production-validated code in `client.go`.
 
@@ -70,9 +112,10 @@ No breaking changes. The v0.1.0 stable surface is untouched —
   - **Research**: start Fast / start Deep / poll / import
   - **Sharing**: share notebook / get share status
   - **Settings**: get user settings
-- `cmd/notebooklm` CLI wrapper (binary): subcommands `login`, `list`,
-  `create`, `add`, `gen`, `download`. Lets shell / Python / JS / cron
-  / Makefile users drive NotebookLM without writing Go.
+- `cmd/notebooklm` CLI wrapper (binary, renamed to `cmd/notebooklm-go`
+  in v0.2.0): subcommands `login`, `list`, `create`, `add`, `gen`,
+  `download`. Lets shell / Python / JS / cron / Makefile users drive
+  NotebookLM without writing Go.
 - Apache 2.0 license.
 
 ### Origin

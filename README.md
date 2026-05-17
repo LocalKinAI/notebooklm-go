@@ -13,10 +13,18 @@ direct HTTPS calls to the same `batchexecute` RPC that the official
 JS bundle uses.
 
 ```bash
-go install github.com/LocalKinAI/notebooklm-go/cmd/notebooklm@latest
-notebooklm login          # paste Google session cookie
-notebooklm list           # list your notebooks
+go install github.com/LocalKinAI/notebooklm-go/cmd/notebooklm-go@latest
+notebooklm-go login       # paste Google session cookie
+notebooklm-go list        # list your notebooks
 ```
+
+> **Why the binary is `notebooklm-go`, not `notebooklm`** — the binary
+> name `notebooklm` is already taken by the npm package
+> [`notebooklm`](https://www.npmjs.com/package/notebooklm) (Node.js
+> port) and the PyPI package [`notebooklm-py`](https://github.com/teng-lin/notebooklm-py)
+> (Python port). Suffixing `-go` lets all three coexist on the same
+> machine without `$PATH` collisions. The Go *package* import stays
+> `notebooklm` (`import notebooklm "github.com/LocalKinAI/notebooklm-go"`).
 
 ## Why this exists
 
@@ -94,15 +102,15 @@ See [`examples/`](examples/) for runnable variants: `list_notebooks`,
 ### As a CLI
 
 ```bash
-go install github.com/LocalKinAI/notebooklm-go/cmd/notebooklm@latest
+go install github.com/LocalKinAI/notebooklm-go/cmd/notebooklm-go@latest
 
-notebooklm login                                # opens browser for one-time OAuth
-notebooklm list                                 # list notebooks
-notebooklm create "Paper Reading List"          # create a new notebook
-notebooklm add <id> https://arxiv.org/pdf/X.pdf # add a URL source
-notebooklm gen audio <id>                       # request Audio Overview
-notebooklm download <id> <artifact-id> -o out.mp3
-notebooklm help                                 # full subcommand list
+notebooklm-go login                                # opens browser for one-time OAuth
+notebooklm-go list                                 # list notebooks
+notebooklm-go create "Paper Reading List"          # create a new notebook
+notebooklm-go add <id> https://arxiv.org/pdf/X.pdf # add a URL source
+notebooklm-go gen audio <id>                       # request Audio Overview
+notebooklm-go download <id> <artifact-id> -o out.mp3
+notebooklm-go help                                 # full subcommand list
 ```
 
 The CLI also covers (v0.1.1, 🧪 experimental): `rename` / `info` /
@@ -120,7 +128,7 @@ two flows:
 Open NotebookLM in your browser, log in, then run:
 
 ```bash
-notebooklm login
+notebooklm-go login
 ```
 
 The CLI prints exactly which cookies it needs (`SID`, `HSID`, `SSID`,
@@ -143,7 +151,7 @@ if err := notebooklm.Login(path); err != nil {  // opens Chrome, you sign in onc
 client, err := notebooklm.NewClient(path)
 ```
 
-The `notebooklm login` CLI subcommand wraps this same flow.
+The `notebooklm-go login` CLI subcommand wraps this same flow.
 
 ## RPC method coverage
 

@@ -7,7 +7,7 @@
 //	cd examples/list_notebooks && go run .
 //
 // Expects credentials at ~/.config/notebooklm-go/auth.json (run
-// `notebooklm login` first if you haven't).
+// `notebooklm-go login` first if you haven't).
 package main
 
 import (
@@ -26,7 +26,7 @@ func main() {
 
 	client, err := notebooklm.NewClient(authPath)
 	if err != nil {
-		log.Fatalf("init: %v (try: notebooklm login)", err)
+		log.Fatalf("init: %v (try: notebooklm-go login)", err)
 	}
 
 	notebooks, err := client.ListNotebooks()

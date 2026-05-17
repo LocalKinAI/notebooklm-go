@@ -1,11 +1,11 @@
 # Compiled binaries — `go build` outputs.
 #
 # IMPORTANT: anchor every pattern with a leading slash. The naked pattern
-# `notebooklm` would silently match the cmd/notebooklm/ directory too,
-# which is exactly the source tree we want git to track.
+# `notebooklm-go` would silently match the cmd/notebooklm-go/ directory
+# too, which is exactly the source tree we want git to track.
 /notebooklm
 /notebooklm-go
-/cmd/notebooklm/notebooklm
+/cmd/notebooklm-go/notebooklm-go
 /examples/list_notebooks/list_notebooks
 /examples/add_pdf_source/add_pdf_source
 /examples/generate_audio_overview/generate_audio_overview

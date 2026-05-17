@@ -20,7 +20,7 @@
 // Swap the format on the GenerateAudio call below to try the others.
 //
 // Expects credentials at ~/.config/notebooklm-go/auth.json (run
-// `notebooklm login` first if you haven't). Override with NOTEBOOKLM_AUTH.
+// `notebooklm-go login` first if you haven't). Override with NOTEBOOKLM_AUTH.
 package main
 
 import (
@@ -56,7 +56,7 @@ func main() {
 
 	client, err := notebooklm.NewClient(authPath)
 	if err != nil {
-		log.Fatalf("init: %v (try: notebooklm login)", err)
+		log.Fatalf("init: %v (try: notebooklm-go login)", err)
 	}
 
 	fmt.Printf("requesting Deep Dive audio for notebook %s...\n", notebookID)

@@ -1,22 +1,22 @@
-// notebooklm — CLI wrapper for github.com/LocalKinAI/notebooklm-go.
+// notebooklm-go — CLI wrapper for github.com/LocalKinAI/notebooklm-go.
 //
 // Lets shell / Python / JS / cron / Makefile users drive Google NotebookLM
 // without writing Go. The same library powers the typed Go API (see the
 // repo README and examples/), but this binary covers the most common
 // pipeline use cases:
 //
-//	notebooklm login                                    one-time setup
-//	notebooklm list                                     list notebooks
-//	notebooklm create "Paper Reading List"              new notebook
-//	notebooklm add <id> https://arxiv.org/pdf/X.pdf     add URL source
-//	notebooklm add <id> /path/to/local.pdf              add PDF source
-//	notebooklm add <id> --text "raw text body"         add text source
-//	notebooklm chat <id> "What does paper 11 say?"     ask a question
-//	notebooklm gen audio <id> --format deepdive       request Audio Overview
-//	notebooklm gen mindmap <id>                        request Mind Map
-//	notebooklm list-artifacts <id>                     list generated artifacts
-//	notebooklm download <id> <artifact-id> -o out.mp3 download artifact
-//	notebooklm research <id> "compare LLM agents" --deep
+//	notebooklm-go login                                    one-time setup
+//	notebooklm-go list                                     list notebooks
+//	notebooklm-go create "Paper Reading List"              new notebook
+//	notebooklm-go add <id> https://arxiv.org/pdf/X.pdf     add URL source
+//	notebooklm-go add <id> /path/to/local.pdf              add PDF source
+//	notebooklm-go add <id> --text "raw text body"         add text source
+//	notebooklm-go chat <id> "What does paper 11 say?"     ask a question
+//	notebooklm-go gen audio <id> --format deepdive       request Audio Overview
+//	notebooklm-go gen mindmap <id>                        request Mind Map
+//	notebooklm-go list-artifacts <id>                     list generated artifacts
+//	notebooklm-go download <id> <artifact-id> -o out.mp3 download artifact
+//	notebooklm-go research <id> "compare LLM agents" --deep
 //
 // All subcommands respect $NOTEBOOKLM_AUTH for the credentials path
 // override; default is ~/.config/notebooklm-go/auth.json.
@@ -34,10 +34,10 @@ import (
 	notebooklm "github.com/LocalKinAI/notebooklm-go"
 )
 
-const usage = `notebooklm — Google NotebookLM CLI (unofficial, reverse-engineered)
+const usage = `notebooklm-go — Google NotebookLM CLI (unofficial, reverse-engineered)
 
 USAGE:
-  notebooklm <command> [args...]
+  notebooklm-go <command> [args...]
 
 NOTEBOOKS:
   login                                One-time: paste session cookies (or chromedp OAuth)
@@ -93,13 +93,13 @@ OPTIONS:
   -h, --help                           Show this help
 
 EXAMPLES:
-  notebooklm login
-  notebooklm create "Reading List"
-  notebooklm add abc123 https://arxiv.org/pdf/2501.12345v2
-  notebooklm gen audio abc123 --format deepdive
-  notebooklm download abc123 art-xyz -o overview.mp3
-  notebooklm research abc123 "compare LLM agents" --deep
-  notebooklm share abc123 --email teammate@example.com --level edit
+  notebooklm-go login
+  notebooklm-go create "Reading List"
+  notebooklm-go add abc123 https://arxiv.org/pdf/2501.12345v2
+  notebooklm-go gen audio abc123 --format deepdive
+  notebooklm-go download abc123 art-xyz -o overview.mp3
+  notebooklm-go research abc123 "compare LLM agents" --deep
+  notebooklm-go share abc123 --email teammate@example.com --level edit
 
 [EXPERIMENTAL] = library wrapper added in v0.1.1 with best-guess param
 shapes. If a call returns "RPC error for <id>", capture the failing
@@ -224,7 +224,7 @@ func die(msg string) {
 func client(auth string) *notebooklm.Client {
 	c, err := notebooklm.NewClient(auth)
 	if err != nil {
-		die(fmt.Sprintf("init client: %v\n  (try: notebooklm login)", err))
+		die(fmt.Sprintf("init client: %v\n  (try: notebooklm-go login)", err))
 	}
 	return c
 }
@@ -254,7 +254,7 @@ func runList(args []string) {
 		fmt.Printf("%s\t%s\n", nb.ID, nb.Title)
 	}
 	if len(notebooks) == 0 {
-		fmt.Fprintln(os.Stderr, "(no notebooks — create one with `notebooklm create <title>`)")
+		fmt.Fprintln(os.Stderr, "(no notebooks — create one with `notebooklm-go create <title>`)")
 	}
 }
 
@@ -263,7 +263,7 @@ func runList(args []string) {
 func runCreate(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 1 {
-		die("create requires a title: notebooklm create <title>")
+		die("create requires a title: notebooklm-go create <title>")
 	}
 	title := strings.Join(rest, " ")
 	c := client(auth)
@@ -279,7 +279,7 @@ func runCreate(args []string) {
 func runDelete(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) != 1 {
-		die("delete requires a notebook ID: notebooklm delete <id>")
+		die("delete requires a notebook ID: notebooklm-go delete <id>")
 	}
 	c := client(auth)
 	if err := c.DeleteNotebook(rest[0]); err != nil {
@@ -293,7 +293,7 @@ func runDelete(args []string) {
 func runAdd(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 2 {
-		die("add requires notebook ID and source: notebooklm add <id> <url|file|--text \"...\">")
+		die("add requires notebook ID and source: notebooklm-go add <id> <url|file|--text \"...\">")
 	}
 	id := rest[0]
 	c := client(auth)
@@ -352,7 +352,7 @@ func runAdd(args []string) {
 func runChat(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 2 {
-		die("chat requires notebook ID and question: notebooklm chat <id> \"<question>\"")
+		die("chat requires notebook ID and question: notebooklm-go chat <id> \"<question>\"")
 	}
 	id := rest[0]
 	question := strings.Join(rest[1:], " ")
@@ -369,7 +369,7 @@ func runChat(args []string) {
 func runGen(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 2 {
-		die("gen requires kind + notebook ID: notebooklm gen audio <id>")
+		die("gen requires kind + notebook ID: notebooklm-go gen audio <id>")
 	}
 	kind := rest[0]
 	id := rest[1]
@@ -515,7 +515,7 @@ func runDownload(args []string) {
 	}
 	positional := fs.Args()
 	if len(positional) != 2 {
-		die("download requires notebook ID and artifact ID: notebooklm download <id> <artifact-id> [-o file]")
+		die("download requires notebook ID and artifact ID: notebooklm-go download <id> <artifact-id> [-o file]")
 	}
 	auth := *authFlag
 	if auth == "" {
@@ -544,7 +544,7 @@ func runDownload(args []string) {
 func runResearch(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 2 {
-		die("research requires notebook ID and query: notebooklm research <id> \"<query>\" [--deep]")
+		die("research requires notebook ID and query: notebooklm-go research <id> \"<query>\" [--deep]")
 	}
 	id := rest[0]
 	mode := "fast"
@@ -572,7 +572,7 @@ func runWhoami(args []string) {
 	auth, _ := authPath(args)
 	c := client(auth)
 	if err := c.CheckAuth(); err != nil {
-		die(fmt.Sprintf("auth check: %v\n  (try: notebooklm login)", err))
+		die(fmt.Sprintf("auth check: %v\n  (try: notebooklm-go login)", err))
 	}
 	fmt.Printf("ok: authenticated, credentials at %s\n", auth)
 }
@@ -615,14 +615,14 @@ func printRaw(label string, raw []byte) {
 // Every handler below is a thin wrapper around an EXPERIMENTAL Client method
 // in client_extra.go. If a call returns `RPC error for <id>: ...`, the param
 // shape needs fixing — file an issue with the failing payload (capture via
-// LOCALKIN_NB_DEBUG=1 ./notebooklm ...).
+// LOCALKIN_NB_DEBUG=1 ./notebooklm-go ...).
 
 // MARK: - rename / info / summarize
 
 func runRename(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 2 {
-		die("rename requires notebook ID and new title: notebooklm rename <id> <new-title>")
+		die("rename requires notebook ID and new title: notebooklm-go rename <id> <new-title>")
 	}
 	c := client(auth)
 	newTitle := strings.Join(rest[1:], " ")
@@ -635,7 +635,7 @@ func runRename(args []string) {
 func runInfo(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 1 {
-		die("info requires notebook ID: notebooklm info <id>")
+		die("info requires notebook ID: notebooklm-go info <id>")
 	}
 	c := client(auth)
 	raw, err := c.GetNotebookMetadata(rest[0])
@@ -648,7 +648,7 @@ func runInfo(args []string) {
 func runSummarize(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 1 {
-		die("summarize requires notebook ID: notebooklm summarize <id>")
+		die("summarize requires notebook ID: notebooklm-go summarize <id>")
 	}
 	c := client(auth)
 	raw, err := c.Summarize(rest[0])
@@ -663,7 +663,7 @@ func runSummarize(args []string) {
 func runSourceGet(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 2 {
-		die("source-get requires notebook ID and source ID: notebooklm source-get <id> <src-id>")
+		die("source-get requires notebook ID and source ID: notebooklm-go source-get <id> <src-id>")
 	}
 	c := client(auth)
 	raw, err := c.GetSource(rest[0], rest[1])
@@ -809,7 +809,7 @@ func runNotesList(args []string) {
 func runNotesAdd(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 3 {
-		die("notes-add requires notebook ID, title, content: notebooklm notes-add <id> <title> <content>")
+		die("notes-add requires notebook ID, title, content: notebooklm-go notes-add <id> <title> <content>")
 	}
 	c := client(auth)
 	title := rest[1]
@@ -852,7 +852,7 @@ func runResearchImport(args []string) {
 func runShare(args []string) {
 	auth, rest := authPath(args)
 	if len(rest) < 1 {
-		die("share requires notebook ID: notebooklm share <id> --email <e> [--level view|edit]")
+		die("share requires notebook ID: notebooklm-go share <id> --email <e> [--level view|edit]")
 	}
 	id := rest[0]
 	var emails []string

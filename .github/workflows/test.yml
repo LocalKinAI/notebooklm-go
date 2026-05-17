@@ -1,0 +1,54 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / go${{ matrix.go }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go: ['1.22', '1.24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build (library + CLI + examples)
+        run: go build ./...
+
+      - name: go test
+        # `-count=1` defeats Go's test cache so flakes show up.
+        # `-race` catches data races in the RPC envelope encoder /
+        # cookie-jar code paths that get hit concurrently by callers.
+        run: go test -count=1 -race ./...
+
+  lint:
+    name: gofmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "the following files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi

@@ -1,0 +1,39 @@
+# Compiled binaries — `go build` outputs.
+#
+# IMPORTANT: anchor every pattern with a leading slash. The naked pattern
+# `notebooklm` would silently match the cmd/notebooklm/ directory too,
+# which is exactly the source tree we want git to track.
+/notebooklm
+/notebooklm-go
+/cmd/notebooklm/notebooklm
+/examples/list_notebooks/list_notebooks
+/examples/add_pdf_source/add_pdf_source
+/examples/generate_audio_overview/generate_audio_overview
+
+# Test artifacts
+*.test
+*.out
+coverage.*
+
+# Working files devs might leave around while debugging RPC payloads
+*.mp3
+*.mp4
+*.png
+*.pdf
+*.log
+*.json.tmp
+
+# Local credentials — never commit a real auth.json. If you stage one by
+# accident here, git will refuse to add it.
+auth.json
+.notebooklm-auth*
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local distribution scratch dir
+dist/

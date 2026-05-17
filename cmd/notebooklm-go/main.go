@@ -29,6 +29,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -95,6 +96,7 @@ OPTIONS:
                                        or $NOTEBOOKLM_AUTH)
   -o, --output FILE                    Output file for 'download'
   -h, --help                           Show this help
+  -v, --version, version               Print version + commit + build info
 
 EXAMPLES:
   notebooklm-go login
@@ -134,6 +136,8 @@ func main() {
 	switch cmd {
 	case "-h", "--help", "help":
 		fmt.Print(usage)
+	case "-v", "--version", "version":
+		runVersion()
 	// --- already-shipped v0.1.0 surface ---
 	case "login":
 		runLogin(args)
@@ -199,7 +203,7 @@ func main() {
 	case "settings":
 		runSettings(args)
 	default:
-		fmt.Fprintf(os.Stderr, "notebooklm: unknown command %q\n\n%s", cmd, usage)
+		fmt.Fprintf(os.Stderr, "notebooklm-go: unknown command %q\n\n%s", cmd, usage)
 		os.Exit(2)
 	}
 }
@@ -231,7 +235,7 @@ func authPath(args []string) (string, []string) {
 }
 
 func die(msg string) {
-	fmt.Fprintln(os.Stderr, "notebooklm: "+msg)
+	fmt.Fprintln(os.Stderr, "notebooklm-go: "+msg)
 	os.Exit(1)
 }
 
@@ -956,4 +960,51 @@ func runSettings(args []string) {
 		die(fmt.Sprintf("settings: %v", err))
 	}
 	printRaw("settings", raw)
+}
+
+// MARK: - version
+
+// runVersion prints the binary's version + git commit + build date as
+// reported by `runtime/debug.ReadBuildInfo`. When this binary was
+// installed via `go install module@version`, the version is the module
+// tag (e.g. "v0.2.2"); when built locally with `go build`, it's "(devel)"
+// which we display as "dev". The vcs.* keys are populated automatically
+// by the Go toolchain at build time as long as VCS info is available.
+func runVersion() {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		fmt.Println("notebooklm-go dev (no build info — built with -trimpath?)")
+		return
+	}
+	version := info.Main.Version
+	if version == "" || version == "(devel)" {
+		version = "dev"
+	}
+
+	var commit, date, dirty string
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			commit = s.Value
+		case "vcs.time":
+			date = s.Value
+		case "vcs.modified":
+			if s.Value == "true" {
+				dirty = " (dirty)"
+			}
+		}
+	}
+	if len(commit) > 12 {
+		commit = commit[:12]
+	}
+
+	fmt.Printf("notebooklm-go %s\n", version)
+	if commit != "" {
+		fmt.Printf("  commit:  %s%s\n", commit, dirty)
+	}
+	if date != "" {
+		fmt.Printf("  built:   %s\n", date)
+	}
+	fmt.Printf("  go:      %s\n", info.GoVersion)
+	fmt.Printf("  module:  %s\n", info.Main.Path)
 }

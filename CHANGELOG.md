@@ -10,6 +10,22 @@ Google ships frontend changes.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-05-16
+
+### Added
+
+- **`notebooklm-go version`** (aliases: `-v`, `--version`) — prints
+  the module version, git commit, build date, Go version, and module
+  path. Uses `runtime/debug.ReadBuildInfo` so installs via
+  `go install ...@vX.Y.Z` self-report their tag correctly.
+
+### Fixed
+
+- Two error messages still prefixed `notebooklm:` instead of
+  `notebooklm-go:` (regression from the v0.2.0 rename — the sed
+  pattern only matched `notebooklm <space>`, missing `notebooklm:`).
+  Now consistently `notebooklm-go: ...`.
+
 ## [0.2.1] - 2026-05-16
 
 ### Added

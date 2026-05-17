@@ -10,6 +10,44 @@ Google ships frontend changes.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-16
+
+### Added
+
+- **17 new typed `Client` methods** wrapping every RPC method ID
+  declared in `rpc.go` that previously had no Go wrapper. All marked
+  🧪 EXPERIMENTAL in godoc: the param shape is the best-guess inferred
+  from neighbouring stable methods and notebooklm-py's wire conventions.
+  Run with `LOCALKIN_NB_DEBUG=1` to capture failing payloads; file
+  issues for 1-line param fixes.
+  - Notebooks: `RenameNotebook`, `GetNotebook`
+  - Sources: `DeleteSource`, `GetSource`, `RefreshSource`, `UpdateSource`
+  - Summaries: `Summarize`
+  - Artifacts: `DeleteArtifact`, `ExportArtifact`
+  - Conversations: `GetLastConvID`, `GetConvTurns`
+  - Notes & legacy mindmap: `GenerateMindMap`, `CreateNote`, `GetNotes`
+  - Research: `PollResearch`, `ImportResearch`
+  - Sharing: `ShareNotebook`
+  - Settings: `GetUserSettings`
+- **20 new CLI subcommands** wiring the new typed methods + the 4
+  stable lib methods that v0.1.0 missed (`info`, `source-guide`,
+  `share-status`, `gen data-table`). `notebooklm help` shows the
+  full surface with 🧪 markers.
+- `client_extra.go` to keep the EXPERIMENTAL additions visually
+  separated from the production-validated code in `client.go`.
+
+### Changed
+
+- README's "RPC method coverage" table now distinguishes 🟢 stable
+  vs 🧪 experimental — v0.1.0's table overclaimed by listing
+  not-yet-implemented methods as "covered".
+- CHANGELOG v0.1.0 entry's RPC coverage list amended (same reason).
+
+### Notes
+
+No breaking changes. The v0.1.0 stable surface is untouched —
+`client.go` was not modified.
+
 ## [0.1.0] - 2026-05-16
 
 ### Added

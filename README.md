@@ -102,7 +102,13 @@ notebooklm create "Paper Reading List"          # create a new notebook
 notebooklm add <id> https://arxiv.org/pdf/X.pdf # add a URL source
 notebooklm gen audio <id>                       # request Audio Overview
 notebooklm download <id> <artifact-id> -o out.mp3
+notebooklm help                                 # full subcommand list
 ```
+
+The CLI also covers (v0.1.1, 🧪 experimental): `rename` / `info` /
+`summarize` / `source-{get,refresh,rename,delete,guide}` / `conv-{last,turns}`
+/ `mindmap-legacy` / `artifact-{export,delete}` / `notes-{list,add}` /
+`research-{poll,import}` / `share` / `share-status` / `settings`.
 
 ## Authentication
 
@@ -142,19 +148,60 @@ The `notebooklm login` CLI subcommand wraps this same flow.
 ## RPC method coverage
 
 `rpc.go` declares the known method IDs. All of them are reachable
-through the typed `Client` API:
+through the typed `Client` API and the CLI.
 
-| Surface       | Methods covered |
-|---------------|-----------------|
-| Notebooks     | List / Create / Get / Rename / Delete |
-| Sources       | Add (URL/PDF/text) / Delete / Get / Refresh / Update |
-| Summarize     | Get summary / Get source guide |
-| Artifacts     | Create (Audio Deep Dive / Brief / Critique / Debate, Report, Video, Quiz, Mind Map, Infographic, Slide Deck, Data Table) / List / Delete / Export |
-| Conversations | Last conv ID / Conv turns |
-| Notes         | Generate Mind Map / Create note / Get notes |
-| Research      | Start Fast / Start Deep / Poll / Import |
-| Sharing       | Share notebook / Get share status |
-| Settings      | Get user settings |
+Methods are marked **🟢 stable** (battle-tested in LocalKin production)
+or **🧪 experimental** (added in v0.1.1 with best-guess param shapes,
+not yet verified against a live NotebookLM session — see "EXPERIMENTAL
+methods" below).
+
+| Surface       | Methods                                                     | Status |
+|---------------|-------------------------------------------------------------|--------|
+| Notebooks     | List / Create / Delete                                      | 🟢 stable |
+| Notebooks     | Get / Rename                                                | 🧪 experimental |
+| Sources       | Add (URL / PDF / text / YouTube)                            | 🟢 stable |
+| Sources       | Delete / Get / Refresh / Update                             | 🧪 experimental |
+| Summaries     | Get source guide                                            | 🟢 stable |
+| Summaries     | Get summary                                                 | 🧪 experimental |
+| Artifacts     | Generate (Audio: Deep Dive / Brief / Critique / Debate;     | 🟢 stable |
+|               | Report, Video, Quiz, Mind Map, Infographic, Slide Deck,     |        |
+|               | Data Table) / List / Download (audio/video/infographic)     |        |
+| Artifacts     | Delete / Export (Docs/Sheets)                               | 🧪 experimental |
+| Conversations | Chat                                                        | 🟢 stable |
+| Conversations | Last conv ID / Conv turns                                   | 🧪 experimental |
+| Notes         | Generate Mind Map (legacy RPC) / Create note / Get notes    | 🧪 experimental |
+| Research      | Start Fast / Start Deep                                     | 🟢 stable |
+| Research      | Poll / Import                                               | 🧪 experimental |
+| Sharing       | Get share status                                            | 🟢 stable |
+| Sharing       | Share notebook (write)                                      | 🧪 experimental |
+| Settings      | Get user settings                                           | 🧪 experimental |
+| Auth          | Check auth                                                  | 🟢 stable |
+
+### EXPERIMENTAL methods
+
+The 🧪 methods live in `client_extra.go`. Their RPC method IDs are
+known (declared in `rpc.go`) but the param shape — what JSON the
+batchexecute call wants in its `params` field — has not been verified
+against a live NotebookLM account at release time. The shapes are
+best-guesses inferred from neighbouring stable methods and from
+notebooklm-py's wire conventions.
+
+If you hit:
+
+```
+RPC error for s0tc2d: "..."
+```
+
+the param shape is wrong. To debug + fix:
+
+```bash
+LOCALKIN_NB_DEBUG=1 ./notebooklm <subcommand> ...
+```
+
+This dumps the failing request body and Google's response. File an
+issue with the redacted payload and the fix is usually a 1-line edit
+to the params slice in `client_extra.go`. PRs welcome — most of
+these will graduate to 🟢 with a single round of real-world testing.
 
 ## The batchexecute protocol (≈1 paragraph)
 

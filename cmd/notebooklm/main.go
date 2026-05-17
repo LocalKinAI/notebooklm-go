@@ -24,6 +24,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -37,35 +39,71 @@ const usage = `notebooklm — Google NotebookLM CLI (unofficial, reverse-enginee
 USAGE:
   notebooklm <command> [args...]
 
-COMMANDS:
-  login                              One-time: paste session cookies
-  list                               List all your notebooks
-  create <title>                     Create a new notebook
-  delete <id>                        Delete a notebook
-  add <id> <url|path>                Add a source (auto-detect URL/PDF/text-file)
-  add <id> --text "raw text"         Add a raw text source
-  chat <id> <question>               Ask the notebook a question
-  gen <kind> <id> [--format X]       Generate artifact: audio | mindmap | report | video
-  list-artifacts <id>                List generated artifacts for a notebook
-  download <id> <artifact-id> [-o]   Download generated artifact to file
-  research <id> <query> [--deep]     Start research (fast unless --deep)
-  whoami                             Show authenticated identity
+NOTEBOOKS:
+  login                                One-time: paste session cookies (or chromedp OAuth)
+  whoami                               Verify auth works
+  list                                 List all your notebooks
+  create <title>                       Create a new notebook
+  rename <id> <new-title>              Rename a notebook                          [EXPERIMENTAL]
+  info <id>                            Dump full notebook metadata (raw JSON)
+  delete <id>                          Delete a notebook
+  summarize <id>                       Get the auto-summary for a notebook        [EXPERIMENTAL]
+
+SOURCES:
+  add <id> <url|path>                  Add a source (auto-detect URL/PDF/text-file/YouTube)
+  add <id> --text "raw text"           Add a raw text source
+  source-get <id> <src-id>             Get a single source's record               [EXPERIMENTAL]
+  source-refresh <id> <src-id>         Re-ingest a source                          [EXPERIMENTAL]
+  source-rename <id> <src-id> <title>  Rename a source                             [EXPERIMENTAL]
+  source-delete <id> <src-id>          Delete a source                             [EXPERIMENTAL]
+  source-guide <id>                    Get the per-source summary
+
+CHAT & CONVERSATIONS:
+  chat <id> <question>                 Ask the notebook a question
+  conv-last <id>                       Get the most-recent conversation ID         [EXPERIMENTAL]
+  conv-turns <id> <conv-id>            Dump a conversation's message history       [EXPERIMENTAL]
+
+ARTIFACTS:
+  gen <kind> <id> [--format X]         Generate: audio | mindmap | report | video | slides
+                                       | infographic | quiz | data-table
+  mindmap-legacy <id>                  Mind map via legacy direct RPC              [EXPERIMENTAL]
+  list-artifacts <id>                  List generated artifacts for a notebook
+  download <id> <art-id> [-o FILE]     Download artifact (audio/video/infographic)
+  artifact-export <id> <art-id>        Export report/data-table to Google Docs    [EXPERIMENTAL]
+  artifact-delete <id> <art-id>        Delete an artifact                          [EXPERIMENTAL]
+
+NOTES:
+  notes-list <id>                      List notes in a notebook                    [EXPERIMENTAL]
+  notes-add <id> <title> <content>     Add a note                                  [EXPERIMENTAL]
+
+RESEARCH:
+  research <id> <query> [--deep]       Start a research task (fast unless --deep)
+  research-poll <id> <task-id>         Poll a research task's status               [EXPERIMENTAL]
+  research-import <id> <task-id>       Import a finished research task as a source [EXPERIMENTAL]
+
+SHARING & SETTINGS:
+  share <id> --email E [--level L]     Share a notebook (L: view | edit)           [EXPERIMENTAL]
+  share-status <id>                    Get sharing state
+  settings                             Get current user settings                   [EXPERIMENTAL]
 
 OPTIONS:
-  --auth PATH                        Credentials file (default $HOME/.config/notebooklm-go/auth.json
-                                     or $NOTEBOOKLM_AUTH)
-  -o, --output FILE                  Output file for 'download'
-  -h, --help                         Show this help
+  --auth PATH                          Credentials file (default $HOME/.config/notebooklm-go/auth.json
+                                       or $NOTEBOOKLM_AUTH)
+  -o, --output FILE                    Output file for 'download'
+  -h, --help                           Show this help
 
 EXAMPLES:
   notebooklm login
-  notebooklm list
   notebooklm create "Reading List"
   notebooklm add abc123 https://arxiv.org/pdf/2501.12345v2
-  notebooklm add abc123 ~/Downloads/paper.pdf
   notebooklm gen audio abc123 --format deepdive
-  notebooklm list-artifacts abc123
   notebooklm download abc123 art-xyz -o overview.mp3
+  notebooklm research abc123 "compare LLM agents" --deep
+  notebooklm share abc123 --email teammate@example.com --level edit
+
+[EXPERIMENTAL] = library wrapper added in v0.1.1 with best-guess param
+shapes. If a call returns "RPC error for <id>", capture the failing
+payload (LOCALKIN_NB_DEBUG=1) and file an issue.
 
 DOCS:
   https://github.com/LocalKinAI/notebooklm-go
@@ -82,6 +120,7 @@ func main() {
 	switch cmd {
 	case "-h", "--help", "help":
 		fmt.Print(usage)
+	// --- already-shipped v0.1.0 surface ---
 	case "login":
 		runLogin(args)
 	case "list":
@@ -104,6 +143,47 @@ func main() {
 		runResearch(args)
 	case "whoami":
 		runWhoami(args)
+	// --- v0.1.1 surface expansion (each backed by an EXPERIMENTAL lib method) ---
+	case "rename":
+		runRename(args)
+	case "info":
+		runInfo(args)
+	case "summarize":
+		runSummarize(args)
+	case "source-get":
+		runSourceGet(args)
+	case "source-refresh":
+		runSourceRefresh(args)
+	case "source-rename":
+		runSourceRename(args)
+	case "source-delete":
+		runSourceDelete(args)
+	case "source-guide":
+		runSourceGuide(args)
+	case "conv-last":
+		runConvLast(args)
+	case "conv-turns":
+		runConvTurns(args)
+	case "mindmap-legacy":
+		runMindMapLegacy(args)
+	case "artifact-export":
+		runArtifactExport(args)
+	case "artifact-delete":
+		runArtifactDelete(args)
+	case "notes-list":
+		runNotesList(args)
+	case "notes-add":
+		runNotesAdd(args)
+	case "research-poll":
+		runResearchPoll(args)
+	case "research-import":
+		runResearchImport(args)
+	case "share":
+		runShare(args)
+	case "share-status":
+		runShareStatus(args)
+	case "settings":
+		runSettings(args)
 	default:
 		fmt.Fprintf(os.Stderr, "notebooklm: unknown command %q\n\n%s", cmd, usage)
 		os.Exit(2)
@@ -346,8 +426,14 @@ func runGen(args []string) {
 			die(fmt.Sprintf("gen quiz: %v", err))
 		}
 		fmt.Println(artifactID)
+	case "datatable", "data-table", "data_table":
+		artifactID, err := c.GenerateArtifact(id, notebooklm.ArtifactDataTable)
+		if err != nil {
+			die(fmt.Sprintf("gen data-table: %v", err))
+		}
+		fmt.Println(artifactID)
 	default:
-		die(fmt.Sprintf("unknown gen kind %q (audio/mindmap/report/video/slides/infographic/quiz)", kind))
+		die(fmt.Sprintf("unknown gen kind %q (audio/mindmap/report/video/slides/infographic/quiz/data-table)", kind))
 	}
 }
 
@@ -503,3 +589,324 @@ func truncate(s string, n int) string {
 // (kept here so future subcommands can `bufio.NewReader(os.Stdin)` for
 // interactive prompts without re-importing.)
 var _ = bufio.NewReader
+
+// printRaw dumps a json.RawMessage to stdout, pretty-printed when possible.
+// Used by the read-only EXPERIMENTAL subcommands that surface raw RPC
+// responses — Google's protocol doesn't have a stable typed schema, so we
+// hand the JSON back to the caller for downstream `jq` / scripting.
+func printRaw(label string, raw []byte) {
+	if len(raw) == 0 {
+		fmt.Printf("%s: (empty)\n", label)
+		return
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, raw, "", "  "); err == nil {
+		fmt.Println(pretty.String())
+		return
+	}
+	// Not valid JSON — print as string.
+	fmt.Println(string(raw))
+}
+
+// =============================================================================
+// v0.1.1 EXPERIMENTAL subcommands
+// =============================================================================
+//
+// Every handler below is a thin wrapper around an EXPERIMENTAL Client method
+// in client_extra.go. If a call returns `RPC error for <id>: ...`, the param
+// shape needs fixing — file an issue with the failing payload (capture via
+// LOCALKIN_NB_DEBUG=1 ./notebooklm ...).
+
+// MARK: - rename / info / summarize
+
+func runRename(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("rename requires notebook ID and new title: notebooklm rename <id> <new-title>")
+	}
+	c := client(auth)
+	newTitle := strings.Join(rest[1:], " ")
+	if err := c.RenameNotebook(rest[0], newTitle); err != nil {
+		die(fmt.Sprintf("rename: %v", err))
+	}
+	fmt.Printf("ok: renamed %s → %q\n", rest[0], newTitle)
+}
+
+func runInfo(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("info requires notebook ID: notebooklm info <id>")
+	}
+	c := client(auth)
+	raw, err := c.GetNotebookMetadata(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("info: %v", err))
+	}
+	printRaw("info", raw)
+}
+
+func runSummarize(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("summarize requires notebook ID: notebooklm summarize <id>")
+	}
+	c := client(auth)
+	raw, err := c.Summarize(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("summarize: %v", err))
+	}
+	printRaw("summary", raw)
+}
+
+// MARK: - source-*
+
+func runSourceGet(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("source-get requires notebook ID and source ID: notebooklm source-get <id> <src-id>")
+	}
+	c := client(auth)
+	raw, err := c.GetSource(rest[0], rest[1])
+	if err != nil {
+		die(fmt.Sprintf("source-get: %v", err))
+	}
+	printRaw("source", raw)
+}
+
+func runSourceRefresh(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("source-refresh requires notebook ID and source ID")
+	}
+	c := client(auth)
+	if err := c.RefreshSource(rest[0], rest[1]); err != nil {
+		die(fmt.Sprintf("source-refresh: %v", err))
+	}
+	fmt.Printf("ok: refreshed source %s\n", rest[1])
+}
+
+func runSourceRename(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 3 {
+		die("source-rename requires notebook ID, source ID, and new title")
+	}
+	c := client(auth)
+	newTitle := strings.Join(rest[2:], " ")
+	if err := c.UpdateSource(rest[0], rest[1], newTitle); err != nil {
+		die(fmt.Sprintf("source-rename: %v", err))
+	}
+	fmt.Printf("ok: renamed source %s → %q\n", rest[1], newTitle)
+}
+
+func runSourceDelete(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("source-delete requires notebook ID and source ID")
+	}
+	c := client(auth)
+	if err := c.DeleteSource(rest[0], rest[1]); err != nil {
+		die(fmt.Sprintf("source-delete: %v", err))
+	}
+	fmt.Printf("ok: deleted source %s\n", rest[1])
+}
+
+func runSourceGuide(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("source-guide requires notebook ID")
+	}
+	c := client(auth)
+	guide, err := c.GetSourceGuide(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("source-guide: %v", err))
+	}
+	fmt.Println(guide)
+}
+
+// MARK: - conv-*
+
+func runConvLast(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("conv-last requires notebook ID")
+	}
+	c := client(auth)
+	id, err := c.GetLastConvID(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("conv-last: %v", err))
+	}
+	fmt.Println(id)
+}
+
+func runConvTurns(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("conv-turns requires notebook ID and conv ID")
+	}
+	c := client(auth)
+	raw, err := c.GetConvTurns(rest[0], rest[1])
+	if err != nil {
+		die(fmt.Sprintf("conv-turns: %v", err))
+	}
+	printRaw("turns", raw)
+}
+
+// MARK: - mindmap-legacy / artifact-export / artifact-delete
+
+func runMindMapLegacy(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("mindmap-legacy requires notebook ID")
+	}
+	c := client(auth)
+	raw, err := c.GenerateMindMap(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("mindmap-legacy: %v", err))
+	}
+	printRaw("mindmap", raw)
+}
+
+func runArtifactExport(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("artifact-export requires notebook ID and artifact ID")
+	}
+	c := client(auth)
+	raw, err := c.ExportArtifact(rest[0], rest[1])
+	if err != nil {
+		die(fmt.Sprintf("artifact-export: %v", err))
+	}
+	printRaw("export", raw)
+}
+
+func runArtifactDelete(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("artifact-delete requires notebook ID and artifact ID")
+	}
+	c := client(auth)
+	if err := c.DeleteArtifact(rest[0], rest[1]); err != nil {
+		die(fmt.Sprintf("artifact-delete: %v", err))
+	}
+	fmt.Printf("ok: deleted artifact %s\n", rest[1])
+}
+
+// MARK: - notes-list / notes-add
+
+func runNotesList(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("notes-list requires notebook ID")
+	}
+	c := client(auth)
+	raw, err := c.GetNotes(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("notes-list: %v", err))
+	}
+	printRaw("notes", raw)
+}
+
+func runNotesAdd(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 3 {
+		die("notes-add requires notebook ID, title, content: notebooklm notes-add <id> <title> <content>")
+	}
+	c := client(auth)
+	title := rest[1]
+	content := strings.Join(rest[2:], " ")
+	if err := c.CreateNote(rest[0], title, content); err != nil {
+		die(fmt.Sprintf("notes-add: %v", err))
+	}
+	fmt.Printf("ok: added note %q\n", title)
+}
+
+// MARK: - research-poll / research-import
+
+func runResearchPoll(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("research-poll requires notebook ID and task ID")
+	}
+	c := client(auth)
+	raw, err := c.PollResearch(rest[0], rest[1])
+	if err != nil {
+		die(fmt.Sprintf("research-poll: %v", err))
+	}
+	printRaw("poll", raw)
+}
+
+func runResearchImport(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 2 {
+		die("research-import requires notebook ID and task ID")
+	}
+	c := client(auth)
+	if err := c.ImportResearch(rest[0], rest[1]); err != nil {
+		die(fmt.Sprintf("research-import: %v", err))
+	}
+	fmt.Printf("ok: imported research %s\n", rest[1])
+}
+
+// MARK: - share / share-status / settings
+
+func runShare(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("share requires notebook ID: notebooklm share <id> --email <e> [--level view|edit]")
+	}
+	id := rest[0]
+	var emails []string
+	level := 1 // 1 = view, 2 = edit (best guess)
+	for i := 1; i < len(rest); i++ {
+		switch rest[i] {
+		case "--email":
+			if i+1 < len(rest) {
+				emails = append(emails, rest[i+1])
+				i++
+			}
+		case "--level":
+			if i+1 < len(rest) {
+				switch strings.ToLower(rest[i+1]) {
+				case "view", "viewer", "1":
+					level = 1
+				case "edit", "editor", "2":
+					level = 2
+				default:
+					die(fmt.Sprintf("share: unknown --level %q (use view|edit)", rest[i+1]))
+				}
+				i++
+			}
+		}
+	}
+	if len(emails) == 0 {
+		die("share requires at least one --email")
+	}
+	c := client(auth)
+	if err := c.ShareNotebook(id, emails, level); err != nil {
+		die(fmt.Sprintf("share: %v", err))
+	}
+	fmt.Printf("ok: shared %s with %d recipient(s) at level %d\n", id, len(emails), level)
+}
+
+func runShareStatus(args []string) {
+	auth, rest := authPath(args)
+	if len(rest) < 1 {
+		die("share-status requires notebook ID")
+	}
+	c := client(auth)
+	raw, err := c.GetShareStatus(rest[0])
+	if err != nil {
+		die(fmt.Sprintf("share-status: %v", err))
+	}
+	printRaw("share-status", raw)
+}
+
+func runSettings(args []string) {
+	auth, _ := authPath(args)
+	c := client(auth)
+	raw, err := c.GetUserSettings()
+	if err != nil {
+		die(fmt.Sprintf("settings: %v", err))
+	}
+	printRaw("settings", raw)
+}

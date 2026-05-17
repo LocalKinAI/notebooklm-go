@@ -29,6 +29,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	notebooklm "github.com/LocalKinAI/notebooklm-go"
@@ -40,7 +41,10 @@ USAGE:
   notebooklm-go <command> [args...]
 
 NOTEBOOKS:
-  login                                One-time: paste session cookies (or chromedp OAuth)
+  login [--attach] [--port N]          One-time auth. Default launches chromedp Chrome
+                                       (often blocked by Google's anti-automation).
+                                       --attach connects to a running Chrome via the
+                                       Chrome DevTools Protocol — recommended.
   whoami                               Verify auth works
   list                                 List all your notebooks
   create <title>                       Create a new notebook
@@ -104,6 +108,16 @@ EXAMPLES:
 [EXPERIMENTAL] = library wrapper added in v0.1.1 with best-guess param
 shapes. If a call returns "RPC error for <id>", capture the failing
 payload (LOCALKIN_NB_DEBUG=1) and file an issue.
+
+LOGIN --attach SETUP (one-time, then re-usable indefinitely):
+  1. Quit Chrome fully — Cmd+Q on EVERY Chrome window (the flag is
+     ignored if a Chrome process is already running).
+  2. Relaunch with the debug port. On macOS:
+       /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+         --remote-debugging-port=9222 &
+     Your normal Chrome profile is preserved; only the debug port is new.
+  3. Sign into Google in that Chrome and open notebooklm.google.com.
+  4. Run:  notebooklm-go login --attach
 
 DOCS:
   https://github.com/LocalKinAI/notebooklm-go
@@ -232,11 +246,44 @@ func client(auth string) *notebooklm.Client {
 // MARK: - login
 
 func runLogin(args []string) {
-	auth, _ := authPath(args)
-	// notebooklm.Login() opens chromedp + paste-cookies fallback. The
-	// underlying lib handles UX; we just forward stdout.
+	auth, rest := authPath(args)
+
+	// Flag parsing — keep simple and explicit so it composes with
+	// authPath's hand-rolled extractor.
+	attach := false
+	port := 9222
+	for i := 0; i < len(rest); i++ {
+		switch rest[i] {
+		case "--attach", "-a":
+			attach = true
+		case "--port":
+			if i+1 < len(rest) {
+				p, err := strconv.Atoi(rest[i+1])
+				if err != nil {
+					die(fmt.Sprintf("--port: not a number: %q", rest[i+1]))
+				}
+				port = p
+				i++
+			}
+		}
+	}
+
+	if attach {
+		// Snapshot cookies from a running Chrome via CDP. Use this when
+		// Google blocks the chromedp launch (the default path) with
+		// "Browser not secure" — they aggressively detect automation.
+		if err := notebooklm.LoginAttach(auth, port); err != nil {
+			die(fmt.Sprintf("login --attach failed: %v", err))
+		}
+		fmt.Printf("Auth saved to %s\n", auth)
+		return
+	}
+
+	// Default: launch a fresh chromedp Chrome and let the user sign in.
+	// Works when Google's detection is lenient — usually not — and
+	// when no other Chrome is running.
 	if err := notebooklm.Login(auth); err != nil {
-		die(fmt.Sprintf("login failed: %v", err))
+		die(fmt.Sprintf("login failed: %v\n  (try: notebooklm-go login --attach — see `notebooklm-go help` for prerequisites)", err))
 	}
 	fmt.Printf("Auth saved to %s\n", auth)
 }

@@ -120,38 +120,63 @@ The CLI also covers (v0.1.1, 🧪 experimental): `rename` / `info` /
 
 ## Authentication
 
-NotebookLM uses standard Google session cookies. This library supports
-two flows:
+NotebookLM uses standard Google session cookies. v0.2.1 ships two
+flows; **the `--attach` flow is strongly recommended** because Google's
+anti-automation detection now blocks sign-in on chromedp-launched
+Chromes ("Browser not secure").
 
-### 1. Headless: paste session cookie
+### 1. ✅ Recommended: `--attach` to your existing Chrome (v0.2.1+)
 
-Open NotebookLM in your browser, log in, then run:
+Snapshot cookies from a normal, already-signed-in Chrome session via
+the Chrome DevTools Protocol. Google can't tell the difference between
+"user using Chrome" and "Go program reading cookies out of that
+Chrome's running process", because that's literally what's happening.
+
+**One-time setup** (then re-usable indefinitely):
 
 ```bash
-notebooklm-go login
+# 1. Fully quit Chrome — Cmd+Q on every window. The --remote-debugging-port
+#    flag is silently ignored if any Chrome process is already running.
+
+# 2. Relaunch Chrome with the debug port:
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 &
+
+# 3. Sign into Google in that Chrome and visit https://notebooklm.google.com
+
+# 4. Snapshot cookies:
+notebooklm-go login --attach
 ```
 
-The CLI prints exactly which cookies it needs (`SID`, `HSID`, `SSID`,
-`__Secure-1PSID` etc.) and where to find them in Chrome DevTools.
-Paste the values; they're stored at `~/.config/notebooklm-go/auth.json`
-(0600 perms).
+Your normal Chrome profile (history, bookmarks, logged-in sessions)
+is preserved. The debug port is the only thing new. Once snapshotted,
+`auth.json` is good until the cookies expire (typically months).
 
-### 2. Interactive: chromedp OAuth
+### 2. Fallback: chromedp launch (often blocked)
 
-If you have Chrome installed and don't mind a browser opening once,
-the `Login` helper pops Chrome, waits for you to sign in, then extracts
-and persists the session cookies to `storagePath` — after which
-`NewClient` reads them back like any other auth.json:
+If you don't have Chrome installed yet, or you're on a fresh machine
+where Google hasn't seen automation yet:
+
+```bash
+notebooklm-go login    # launches a fresh chromedp Chrome
+```
+
+The Go library equivalent:
 
 ```go
 path := notebooklm.DefaultStoragePath()
-if err := notebooklm.Login(path); err != nil {  // opens Chrome, you sign in once
+if err := notebooklm.Login(path); err != nil {  // chromedp launch
+    log.Fatal(err)
+}
+// or, recommended:
+if err := notebooklm.LoginAttach(path, 9222); err != nil {  // CDP attach
     log.Fatal(err)
 }
 client, err := notebooklm.NewClient(path)
 ```
 
-The `notebooklm-go login` CLI subcommand wraps this same flow.
+If `Login` returns "Browser not secure" or similar, switch to
+`LoginAttach`.
 
 ## RPC method coverage
 

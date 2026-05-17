@@ -10,6 +10,41 @@ Google ships frontend changes.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-05-16
+
+### Added
+
+- **`notebooklm-go login --attach`** — snapshot Google cookies from an
+  already-running Chrome via the Chrome DevTools Protocol. Bypasses
+  Google's "Browser not secure" block that hits chromedp-launched
+  Chromes. Recommended path for v0.2.1+.
+- New library function `notebooklm.LoginAttach(storagePath, port)`.
+- `--port` flag for `login` (defaults to 9222).
+
+### Why
+
+Google's anti-automation detection started flagging chromedp-launched
+Chromes during the sign-in flow, surfacing as a "Browser not secure"
+banner where the password field used to be. Existing `notebooklm-go login`
+(the chromedp path) now fails for most users. `--attach` connects to
+a real Chrome the user is already running with `--remote-debugging-port=9222`
+and just snapshots its cookies — no automation flags on the live session,
+no detection trigger.
+
+### Setup
+
+```bash
+# Quit Chrome fully (Cmd+Q on every window)
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 &
+# Sign in (or verify already signed in) at https://notebooklm.google.com
+notebooklm-go login --attach
+```
+
+The original chromedp-launch path is preserved as fallback (`notebooklm-go login`
+without `--attach`) for the rare case where it still works (fresh
+machines where Google hasn't seen automation yet).
+
 ## [0.2.0] - 2026-05-16
 
 ### Changed (BREAKING — CLI install URL)
